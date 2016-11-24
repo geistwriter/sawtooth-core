@@ -139,18 +139,7 @@ def get_node_controller(state):
 
 
 def do_cluster_start(args):
-    # pylint: disable=redefined-variable-type
-    file_name = \
-        os.path.join(os.path.expanduser("~"), '.sawtooth', 'cluster',
-                     "state.yaml")
-
-    # Check for existing state.yaml and get state. If not create state dict.
-    if os.path.isfile(file_name):
-        with open(file_name, 'r') as state_file:
-            state = yaml.load(state_file)
-    else:
-        state = dict()
-        state["DesiredState"] = "Stopped"
+    state = load_state(start=True)
 
     # Check State for Running validators, if stopped clear out nodes.
     if state["DesiredState"] == "Stopped":
@@ -168,17 +157,8 @@ def do_cluster_start(args):
 
     state["DesiredState"] = "Running"
 
-    if state["Manage"] == 'docker':
-        node_controller = DockerNodeController()
-
-    elif state["Manage"] == 'daemon':
-        node_controller = DaemonNodeController()
-    else:
-        raise CliException('invalid management type:'
-                           ' {}'.format(state["Manage"]))
-
+    node_controller = get_node_controller(state)
     node_command_generator = SimpleNodeCommandGenerator()
-
     vnm = ValidatorNetworkManager(
         node_controller=node_controller,
         node_command_generator=node_command_generator)
@@ -207,9 +187,7 @@ def do_cluster_start(args):
 
         state["Nodes"][node_name] = {"Status": "Running", "Index": i}
 
-    # Write file to default directory with current state Nodes
-    with open(file_name, 'w') as state_file:
-        yaml.dump(state, state_file, default_flow_style=False)
+    save_state(state)
 
     try:
         vnm.update()
@@ -218,27 +196,10 @@ def do_cluster_start(args):
 
 
 def do_cluster_stop(args):
-    # pylint: disable=redefined-variable-type
-    file_name = \
-        os.path.join(os.path.expanduser("~"), '.sawtooth', 'cluster',
-                     "state.yaml")
-    # Get current state of Nodes
-    if os.path.isfile(file_name):
-        with open(file_name, 'r') as state_file:
-            state = yaml.load(state_file)
-    else:
-        raise CliException("Missing state file")
+    state = load_state()
 
-    if state['Manage'] is None or state['Manage'] == 'docker':
-        node_controller = DockerNodeController()
-    elif state['Manage'] == 'daemon':
-        node_controller = DaemonNodeController()
-    else:
-        raise CliException('invalid management'
-                           ' type: {}'.format(state['Manage']))
-
+    node_controller = get_node_controller(state)
     node_command_generator = SimpleNodeCommandGenerator()
-
     vnm = ValidatorNetworkManager(
         node_controller=node_controller,
         node_command_generator=node_command_generator)
@@ -270,34 +231,16 @@ def do_cluster_stop(args):
 
     # Update state of nodes
     state["Nodes"] = nodes
-    with open(file_name, 'w') as state_file:
-        yaml.dump(state, state_file, default_flow_style=False)
+    save_state(state)
 
     vnm.update()
 
 
 def do_cluster_status(args):
-    # pylint: disable=redefined-variable-type
-    file_name = \
-        os.path.join(os.path.expanduser("~"), '.sawtooth', 'cluster',
-                     "state.yaml")
-    # Get current expected state
-    if os.path.isfile(file_name):
-        with open(file_name, 'r') as state_file:
-            state = yaml.load(state_file)
-    else:
-        raise CliException("Missing state file")
+    state = load_state()
 
-    if state['Manage'] is None or state['Manage'] == 'docker':
-        node_controller = DockerNodeController()
-    elif state['Manage'] == 'daemon':
-        node_controller = DaemonNodeController()
-    else:
-        raise CliException('invalid management'
-                           ' type: {}'.format(state['Manage']))
-
+    node_controller = get_node_controller(state)
     node_command_generator = SimpleNodeCommandGenerator()
-
     vnm = ValidatorNetworkManager(
         node_controller=node_controller,
         node_command_generator=node_command_generator)
@@ -328,27 +271,10 @@ def do_cluster_status(args):
 
 
 def do_cluster_extend(args):
-    # pylint: disable=redefined-variable-type
-    file_name = \
-        os.path.join(os.path.expanduser("~"), '.sawtooth', 'cluster',
-                     "state.yaml")
-    # Get current state of Nodes
-    if os.path.isfile(file_name):
-        with open(file_name, 'r') as state_file:
-            state = yaml.load(state_file)
-    else:
-        raise CliException("Missing state file")
+    state = load_state()
 
-    if state['Manage'] is None or state['Manage'] == 'docker':
-        node_controller = DockerNodeController()
-    elif state['Manage'] == 'daemon':
-        node_controller = DaemonNodeController()
-    else:
-        raise CliException('invalid management'
-                           ' type: {}'.format(state['Manage']))
-
+    node_controller = get_node_controller(state)
     node_command_generator = SimpleNodeCommandGenerator()
-
     vnm = ValidatorNetworkManager(
         node_controller=node_controller,
         node_command_generator=node_command_generator)
@@ -386,9 +312,7 @@ def do_cluster_extend(args):
 
         state["Nodes"][node_name] = {"Status": "Running", "Index": j}
 
-    # Write file to default directory with current state Nodes
-    with open(file_name, 'w') as state_file:
-        yaml.dump(state, state_file, default_flow_style=False)
+    save_state(state)
 
     try:
         vnm.update()
