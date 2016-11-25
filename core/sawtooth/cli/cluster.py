@@ -101,6 +101,43 @@ def do_cluster(args):
             args.cluster_command))
 
 
+def get_state_file_name():
+    home = os.path.expanduser("~")
+    return os.path.join(home, '.sawtooth', 'cluster', "state.yaml")
+
+
+def load_state(start=False):
+    file_name = get_state_file_name()
+    if os.path.isfile(file_name):
+        with open(file_name, 'r') as state_file:
+            state = yaml.load(state_file)
+    elif start is True:
+        state = dict()
+        state["DesiredState"] = "Stopped"
+    else:
+        raise CliException("Missing state file")
+    return state
+
+
+def save_state(state):
+    file_name = get_state_file_name()
+    with open(file_name, 'w') as state_file:
+        yaml.dump(state, state_file, default_flow_style=False)
+
+
+def get_node_controller(state):
+    # pylint: disable=redefined-variable-type
+    node_controller = None
+    if state['Manage'] == 'docker':
+        node_controller = DockerNodeController()
+    elif state['Manage'] == 'daemon':
+        node_controller = DaemonNodeController()
+    else:
+        raise CliException('invalid management type:'
+                           ' {}'.format(state['Manage']))
+    return node_controller
+
+
 def do_cluster_start(args):
     # pylint: disable=redefined-variable-type
     file_name = \
