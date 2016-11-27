@@ -43,6 +43,7 @@ def add_cluster_parser(subparsers, parent_parser):
     add_cluster_status_parser(cluster_subparsers, parent_parser)
     add_cluster_stop_parser(cluster_subparsers, parent_parser)
     add_cluster_extend_parser(cluster_subparsers, parent_parser)
+    add_cluster_reset_parser(cluster_subparsers, parent_parser)
 
 
 def add_cluster_status_parser(subparsers, parent_parser):
@@ -95,6 +96,14 @@ def add_cluster_extend_parser(subparsers, parent_parser):
         default=1)
 
 
+def add_cluster_reset_parser(subparsers, parent_parser):
+    help_str = 'Reset the state of sawtooth cluster.  If --wrap was ' \
+               'initially called without a concrete directory, reset ' \
+               'deletes all associated data (including blockchains).'
+    subparsers.add_parser('reset', parents=[parent_parser],
+                          description=help_str)
+
+
 def do_cluster(args):
     if args.cluster_command == 'start':
         do_cluster_start(args)
@@ -104,6 +113,8 @@ def do_cluster(args):
         do_cluster_stop(args)
     elif args.cluster_command == 'extend':
         do_cluster_extend(args)
+    elif args.cluster_command == 'reset':
+        do_cluster_reset(args)
     else:
         raise CliException("invalid cluster command: {}".format(
             args.cluster_command))
@@ -180,7 +191,7 @@ def do_cluster_start(args):
     if state["DesiredState"] == "Stopped":
         state["Nodes"] = {}
 
-    if "Manage" not in state or state["DesiredState"] == "Stopped":
+    if "Manage" not in state:
         if args.manage == "subprocess" or args.manage is None:
             state["Manage"] = "subprocess"
         elif args.manage == "docker":
@@ -189,8 +200,9 @@ def do_cluster_start(args):
             state["Manage"] = "daemon"
     elif args.manage is not None and state['Manage'] != args.manage\
             and state["DesiredState"] == "Running":
-        raise CliException('Cannot use two different Manage types.'
-                           ' Already running {}'.format(state["Manage"]))
+        raise CliException("Cannot use two different Manage types.  Already "
+                           "running {}.  Try again after running 'sawtooth "
+                           "cluster reset'".format(state["Manage"]))
 
     state["DesiredState"] = "Running"
 
@@ -250,6 +262,28 @@ def do_cluster_start(args):
             # force kill anything left over
             for node_name in node_controller.get_node_names():
                 node_controller.kill(node_name)
+
+
+def do_cluster_reset(args):
+    state = load_state()
+
+    node_controller = get_node_controller(state, args)
+    node_command_generator = SimpleNodeCommandGenerator()
+    vnm = ValidatorNetworkManager(
+        node_controller=node_controller,
+        node_command_generator=node_command_generator)
+
+    running = vnm.get_node_names()
+    if len(running) != 0:
+        raise CliException("Cannot reset with running nodes.  The following "
+                           "nodes are still running: {}.  Rerun after calling"
+                           "'sawtooth cluster stop'.".format(running))
+
+    if 'ManageWrap' in state.keys() and state['ManageWrap'] is True:
+        # node_controller owns CURRENCYHOME; remove it
+        node_controller.clean()
+
+    os.remove(get_state_file_name())
 
 
 def do_cluster_stop(args):
