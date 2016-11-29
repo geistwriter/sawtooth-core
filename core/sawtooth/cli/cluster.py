@@ -183,14 +183,14 @@ def get_node_controller(state, args):
             raise CliException("Already wrapped to %s." % state["Wrap"])
     if state['Wrap'] is not False:
         # either args or state have indicated a WrappedNodeController
-        if 'ManageWrap' not in state.keys():
-            state['ManageWrap'] = None
+        if 'CleanDataDir' not in state.keys():
+            state['CleanDataDir'] = None
         node_controller = WrappedNodeController(
             node_controller, data_dir=state['Wrap'],
-            clean_data_dir=state['ManageWrap'])
+            clean_data_dir=state['CleanDataDir'])
         if state['Wrap'] is None:
             state['Wrap'] = node_controller.get_data_dir()
-            state['ManageWrap'] = True
+            state['CleanDataDir'] = True
         print '{} wrapped to {}'.format(args.cluster_command, state['Wrap'])
 
     # Return out construction:
