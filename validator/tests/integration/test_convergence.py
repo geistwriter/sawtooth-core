@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------------
+import inspect
 import logging
 import os
 import time
@@ -61,6 +62,7 @@ class TestConvergence(unittest.TestCase):
         block on the network is the 'intended' block.  To do so, it would need
         to have additional, internal knowledge about the validator subsystem.
         '''
+        print '{}.{}:'.format(self.__class__.__name__, inspect.stack()[0][3])
         convergent = self._poll_for_convergence(timeout=128, tolerance=1,
                                                 standard=2)
         self.assertTrue(convergent, 'network divergent')
@@ -71,5 +73,7 @@ class TestConvergence(unittest.TestCase):
         Ensures that the network (self.urls) is convergent on at least 10
         blocks, with a fork tolerance of two.
         '''
+        print
+        print '{}.{}:'.format(self.__class__.__name__, inspect.stack()[0][3])
         convergent = self._poll_for_convergence()
         self.assertTrue(convergent, 'network divergent')

@@ -13,13 +13,17 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 import logging
+import os
 import time
 import traceback
 import unittest
 
 from integration.test_convergence import TestConvergence
+from integration.test_integration import TestIntegration
+from integration.test_local_validation import TestLocalValidationErrors
 from integration.test_smoke import TestSmoke
 from integration.test_validator_restart import TestValidatorRestart
+from integration.test_validator_recovery import TestValidatorRecovery
 from sawtooth.manage.node import NodeArguments
 from sawtooth.manage.subproc import SubprocessNodeController
 from sawtooth.manage.wrap import WrappedNodeController
@@ -27,6 +31,10 @@ from txnintegration.utils import Progress
 from txnintegration.utils import TimeOut
 
 LOGGER = logging.getLogger(__name__)
+
+ENABLE_INTEGRATION_TESTS = True \
+    if os.environ.get("ENABLE_INTEGRATION_TESTS", False) == "1" else False
+
 
 class SawtoothVnmTestSuite(unittest.TestCase):
     def _do_teardown(self):
@@ -57,7 +65,7 @@ class SawtoothVnmTestSuite(unittest.TestCase):
         print 'creating', str(self.__class__.__name__)
         # set up our nodes (suite-internal interface)
         self._nodes = [
-            NodeArguments('v%s' % i, 8800 + i, 9000 + i) for i in range(2)
+            NodeArguments('v%s' % i, 8800 + i, 9000 + i) for i in range(5)
         ]
         # set up our urls (external interface)
         self._urls = ['http://localhost:%s' % x.http_port for x in self._nodes]
@@ -77,6 +85,7 @@ class SawtoothVnmTestSuite(unittest.TestCase):
     def nodes(self):
         return self._nodes[:]
 
+    @unittest.skipUnless(ENABLE_INTEGRATION_TESTS, "integration test")
     def test_suite(self):
         success = False
         try:
@@ -84,6 +93,22 @@ class SawtoothVnmTestSuite(unittest.TestCase):
             self._do_setup()
             suite = unittest.TestSuite()
             suite.addTest(TestConvergence('test_bootstrap', self.urls()))
+            suite.addTest(TestValidatorRestart('test_sigterm', urls=self.urls(),
+                                               node_controller=self._node_ctrl,
+                                               nodes=self.nodes()))
+            suite.addTest(TestLocalValidationErrors('test_local_validation_errors',
+                                                    self.urls()))
+            suite.addTest(TestIntegration('test_intkey_load_ext', self.urls()))
+            suite.addTest(TestIntegration('test_missing_dependencies', self.urls()))
+            suite.addTest(TestSmoke('test_intkey_load', self.urls()))
+            suite.addTest(
+                TestValidatorRecovery('test_sigterm', urls=self.urls(),
+                                      node_controller=self._node_ctrl,
+                                      nodes=self.nodes()))
+            suite.addTest(
+                TestValidatorRecovery('test_sigkill', urls=self.urls(),
+                                      node_controller=self._node_ctrl,
+                                      nodes=self.nodes()))
             runner = unittest.TextTestRunner()
             result = runner.run(suite)
             if len(result.failures) == 0 and len(result.errors) == 0:

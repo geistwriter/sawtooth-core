@@ -60,8 +60,9 @@ class DevModeTestSuite(unittest.TestCase):
         # the test suite is written, it should be added to run_tests.
         suite = unittest.TestSuite()
         suite.addTest(
-            TestLocalValidationErrors('test_local_validation_errors'))
-        suite.addTest(TestSmoke('test_intkey_load_dev_mode'))
+            TestLocalValidationErrors('test_local_validation_errors',
+                                      urls=dev_vnm.urls()))
+        suite.addTest(TestSmoke('test_intkey_load', urls=dev_vnm.urls()))
         runner = unittest.TextTestRunner()
         result = runner.run(suite)
 

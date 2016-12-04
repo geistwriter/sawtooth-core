@@ -29,10 +29,13 @@ RUN_TEST_SUITES = True \
 
 
 class TestLocalValidationErrors(unittest.TestCase):
+    def __init__(self, test_name, urls=None):
+        super(TestLocalValidationErrors, self).__init__(test_name)
+        self.urls = urls
+
     @unittest.skipUnless(RUN_TEST_SUITES, "test suites")
     def test_local_validation_errors(self):
-        url = "http://localhost:8800"
-        client = IntegerKeyClient(url,
+        client = IntegerKeyClient(self.urls[0],
                                   keystring=generate_private_key(),
                                   disable_client_validation=True)
 
